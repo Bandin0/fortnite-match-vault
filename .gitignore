@@ -1,0 +1,12 @@
+# data + secrets
+data/
+.env
+*.zip
+
+# node
+node_modules/
+npm-debug.log*
+
+# .NET build output
+replay2json/bin/
+replay2json/obj/

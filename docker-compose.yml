@@ -1,0 +1,22 @@
+services:
+  fortnite:
+    build: .
+    container_name: fortnite-match-vault
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8090}:8090"
+    environment:
+      - PORT=8090
+      - DATA_DIR=/data
+      # Optional: require an "x-ingest-key" header on uploads (blank = open uploads)
+      - INGEST_KEY=${FORTNITE_INGEST_KEY:-}
+      # Optional: your in-game name, helps pick "you" out of ambiguous replays
+      - ME_NAME=${FORTNITE_ME_NAME:-}
+    volumes:
+      # match records + raw replays live here on the host
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Match Vault</title>
+<style>
+  :root{--bg:#0b0d12;--panel:#141821;--panel2:#1b2130;--line:#252c3d;--fg:#e7ecf5;--dim:#8b96ad;
+        --accent:#5eead4;--accent2:#818cf8;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;--gold:#fbbf24}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -120px,#16203a 0%,var(--bg) 60%);
+       color:var(--fg);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 18px 70px}
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+  h1{margin:0;font-size:24px;letter-spacing:-.4px}
+  h1 span{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .muted{color:var(--dim);font-size:13px}
+  .ctrl{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+  select.sel{appearance:none;-webkit-appearance:none;background:#171e2c;border:1px solid var(--line);
+       color:var(--fg);padding:8px 34px 8px 13px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;
+       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b96ad'/%3E%3C/svg%3E");
+       background-repeat:no-repeat;background-position:right 12px center;transition:.15s}
+  select.sel:hover{border-color:var(--accent)}
+  select.sel:focus{outline:none;border-color:var(--accent)}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:14px}
+  .drop{border:1.5px dashed #35405c;border-radius:14px;padding:20px;text-align:center;color:var(--dim);
+        transition:.15s;cursor:pointer;margin-bottom:20px}
+  .drop.hot{border-color:var(--accent);color:var(--fg);background:#151f2e}
+  .row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:.12s}
+  .row:last-child{border-bottom:0}
+  .row:hover{background:#1a2233}
+  .row:first-child{border-top-left-radius:14px;border-top-right-radius:14px}
+  .row:last-child{border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+  .place{min-width:54px;text-align:center;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+  .place small{display:block;font-size:10px;color:var(--dim);font-weight:500;letter-spacing:.08em}
+  .p1{color:var(--gold)}
+  .meta{flex:1;min-width:0}
+  .meta .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meta .s{color:var(--dim);font-size:12.5px}
+  .kills{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+  .kills small{display:block;color:var(--dim);font-weight:500;font-size:10px;letter-spacing:.08em}
+  .pill{font-size:11px;padding:2px 9px;border-radius:999px;background:#232b40;border:1px solid var(--line);color:var(--dim)}
+  .owner-pill{font-size:11px;padding:2px 9px;border-radius:999px;background:#1c2b3a;border:1px solid #2c4258;color:#9fd0ff;margin-left:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .chip{font-size:11px;padding:1px 8px;border-radius:999px;background:#17271f;border:1px solid #2c5a45;color:#8fe8c4;white-space:nowrap}
+  .chip b{color:#eafff6;font-variant-numeric:tabular-nums;margin-left:2px}
+  /* ---- player attribute tags ---- */
+  .ptag,.ltag,.btag,.rtag{font-size:10px;padding:1px 6px;border-radius:5px;margin-left:6px;border:1px solid var(--line);color:var(--dim);background:#1a2130;white-space:nowrap;vertical-align:middle}
+  .ptag.pc{color:#9fd0ff;border-color:#2c4258;background:#16202e}
+  .ptag.console{color:#c9b6ff;border-color:#3a2f58;background:#1e1a2e}
+  .ptag.mobile{color:#8fe8c4;border-color:#2c5a45;background:#17271f}
+  .ltag{color:#a7b3c9}
+  .btag{color:#ffd08a;border-color:#5a4620;background:#2a2213}
+  .rtag{color:var(--accent);border-color:#2c5a45;background:#12251f}
+  /* ---- storm animation ---- */
+  .storm-wrap{margin-top:4px}
+  canvas#storm{width:100%;max-width:380px;aspect-ratio:1;background:#0a0e16;border:1px solid var(--line);border-radius:12px;display:block}
+  .stormctl{display:flex;align-items:center;gap:10px;margin-top:9px;max-width:380px}
+  .stormctl input[type=range]{flex:1;accent-color:var(--accent)}
+  .stormctl button{min-width:42px;padding:6px 10px}
+  .stormlegend{display:flex;gap:14px;font-size:11px;color:var(--dim);margin-top:7px}
+  .stormlegend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle}
+  /* ---- kill feed ---- */
+  .kflist{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#0f1420}
+  .kf{display:flex;align-items:center;gap:8px;padding:6px 11px;border-bottom:1px solid #1b2233;font-size:13px}
+  .kf:last-child{border-bottom:0}
+  .kf.ours{background:#12251f}
+  .kf .kft{color:var(--dim);font-variant-numeric:tabular-nums;font-size:11.5px;min-width:40px}
+  .kf .kfk{font-weight:600}
+  .kf .kfa{color:var(--bad);font-weight:700}
+  .kf .kfv{color:#cbd5e6}
+  .kf.ours .kfk{color:var(--accent)}
+  .kf .btag{margin-left:4px}
+  .mapbadge{font-size:10px;padding:1px 7px;border-radius:999px;background:#241a3a;border:1px solid #46346b;color:#c9b6ff;margin-left:8px;white-space:nowrap}
+  /* ---- lobby platform breakdown ---- */
+  .platbar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+  .pcount{font-size:12px;padding:3px 10px;border-radius:8px;background:#151c2a;border:1px solid var(--line);color:var(--dim)}
+  .pcount b{color:var(--fg);font-variant-numeric:tabular-nums;margin-left:4px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);font-size:14px}
+  th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+  .me{color:var(--accent);font-weight:700}
+  dialog{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:16px;
+         padding:0;max-width:560px;width:92vw}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  .dhead{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .dbody{padding:16px 20px 22px;max-height:65vh;overflow:auto}
+  button.x{background:none;border:0;color:var(--dim);font-size:22px;cursor:pointer}
+  .stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+  .stat3 div{background:#0f1420;border:1px solid var(--line);border-radius:11px;padding:10px;text-align:center}
+  .stat3 b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+  .stat3 span{color:var(--dim);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .sectitle{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);
+            margin:16px 0 8px;font-weight:600}
+  .team{margin-bottom:6px}
+  .tm{display:flex;justify-content:space-between;align-items:center;gap:10px;
+      padding:9px 13px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:#151c2a}
+  .tm.me{border-color:var(--accent);background:#12251f}
+  .tm .nm{font-weight:600}
+  .tm .tag{font-size:10px;padding:1px 7px;border-radius:999px;background:#232b40;color:var(--dim);border:1px solid var(--line);margin-left:8px}
+  .tm .kk{font-variant-numeric:tabular-nums;font-weight:700}
+  .tm .kk small{color:var(--dim);font-weight:500;font-size:10px;margin-left:4px}
+  .tabs{display:flex;gap:8px;margin-bottom:18px}
+  .tab{appearance:none;border:1px solid var(--line);background:#171e2c;color:var(--dim);
+       padding:8px 16px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;transition:.15s}
+  .tab.active{background:#222a3d;color:var(--fg);border-color:var(--accent)}
+  td.me{color:var(--accent);font-weight:700}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1e2a3d;border:1px solid var(--line);
+         padding:11px 18px;border-radius:11px;font-size:14px;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+  .empty{text-align:center;color:var(--dim);padding:44px 0}
+  /* ---- quick sync ---- */
+  .sync{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 16px;margin-bottom:14px}
+  .sync-t{font-weight:700;margin-bottom:2px}
+  .sync-btns{display:flex;gap:8px}
+  .btn{appearance:none;border:1px solid var(--accent);background:var(--accent);color:#04221c;
+       font:inherit;font-weight:700;padding:9px 16px;border-radius:10px;cursor:pointer;transition:.15s;white-space:nowrap}
+  .btn:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.55;cursor:default;filter:none}
+  .btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+  .btn.ghost:hover{border-color:var(--accent)}
+  /* ---- tier list ---- */
+  .tier{display:flex;align-items:stretch;gap:10px;margin-bottom:10px}
+  .tlabel{flex:0 0 62px;display:flex;align-items:center;justify-content:center;
+          border-radius:12px;font-weight:800;font-size:26px;color:#0b0d12;
+          text-shadow:0 1px 0 rgba(255,255,255,.25)}
+  .tier.tS .tlabel{background:linear-gradient(160deg,#ff8a8a,#f8524b)}
+  .tier.tA .tlabel{background:linear-gradient(160deg,#ffb877,#fb923c)}
+  .tier.tB .tlabel{background:linear-gradient(160deg,#ffe07a,#fbbf24)}
+  .tier.tC .tlabel{background:linear-gradient(160deg,#8ff0c0,#34d399)}
+  .tier.tD .tlabel{background:linear-gradient(160deg,#9ecbff,#60a5fa)}
+  .tcards{flex:1;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+          background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+          border-radius:12px;padding:10px;min-height:60px}
+  .tcard{display:flex;flex-direction:column;gap:2px;background:#0f1420;border:1px solid var(--line);
+         border-radius:10px;padding:8px 12px;min-width:150px}
+  .tcard.self{border-color:var(--accent);background:#12251f}
+  .tcard .nm{font-weight:700;display:flex;align-items:center;gap:6px}
+  .tcard .nm .tag{font-size:10px;padding:1px 7px;border-radius:999px;background:#1f3a2f;color:var(--accent);border:1px solid #2c5a45}
+  .tcard .st{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .tcard .st b{color:var(--fg)}
+  .tempty{color:var(--dim);font-size:12px;font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Match <span>Vault</span></h1>
+      <div class="muted">Fortnite matches — placement, kills &amp; teammates. Parsed locally.</div>
+    </div>
+    <div class="ctrl">
+      <select class="sel" id="player" title="Filter by who recorded the match"></select>
+      <div class="muted" id="count">—</div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-view="matches">Matches</button>
+    <button class="tab" data-view="teammates">Teammates</button>
+    <button class="tab" data-view="tiers">Tier List</button>
+  </div>
+
+  <div id="view-matches">
+    <div class="sync card">
+      <div>
+        <div class="sync-t">⚡ Quick sync</div>
+        <div class="muted" id="sync-sub">Pull new replays straight from your Fortnite folder — one click.</div>
+        <div class="muted" style="font-size:12px;margin-top:4px">Windows blocks the folder picker for <code>AppData</code>? Just <strong>drag the <code>Demos</code> folder</strong> onto the page below instead.</div>
+      </div>
+      <div class="sync-btns">
+        <button class="btn" id="sync-btn">Pull new replays</button>
+        <button class="btn ghost" id="sync-pick" title="Choose a different folder">Folder…</button>
+      </div>
+      <input type="file" id="dir-input" webkitdirectory directory multiple hidden>
+    </div>
+    <div class="drop" id="drop">
+      <strong>Drop .replay files</strong> — or drag your whole <code>Demos</code> folder here<br>
+      <span class="muted">At <code>%LOCALAPPDATA%\FortniteGame\Saved\Demos</code> · or click to pick files</span>
+      <input type="file" id="file" accept=".replay" multiple hidden>
+    </div>
+    <div class="card" id="list"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div id="view-teammates" hidden>
+    <div class="card" id="mates"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div id="view-tiers" hidden>
+    <div class="muted" style="margin-bottom:12px">
+      Ranked by <strong>points per match</strong> — placement points + eliminations.
+      Tiers are relative to the leader (S ≥90%, A 75–89%, B 60–74%, C 45–59%, D &lt;45%).
+    </div>
+    <div id="tiers"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<dialog id="detail"><div class="dhead">
+  <strong id="dtitle">Match</strong><button class="x" id="dclose">×</button>
+</div><div class="dbody" id="dbody"></div></dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast = (msg) => { const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'), 2600); };
+
+let OWNER = '';           // '' = everyone
+let VIEW = 'matches';     // current tab
+const q = () => OWNER ? '?owner=' + encodeURIComponent(OWNER) : '';
+
+function placeClass(p){ return p===1 ? 'p1' : ''; }
+function fmtDate(iso){ if(!iso) return '—'; const d=new Date(iso);
+  return d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); }
+function fmtDur(ms){ if(!ms) return '—'; const m=Math.round(ms/60000); return m+'m'; }
+
+async function loadOwners(){
+  try{
+    const arr = await (await fetch('/api/owners')).json();
+    const total = arr.reduce((s,o)=>s+o.matches,0);
+    const sel = $('player');
+    sel.innerHTML =
+      `<option value="">Everyone (${total})</option>` +
+      arr.map(o => `<option value="${esc(o.name)}">${esc(o.name)} (${o.matches})</option>`).join('');
+    sel.value = OWNER;
+  }catch(e){ /* leave as-is */ }
+}
+
+async function load(){
+  try{
+    const r = await fetch('/api/matches' + q());
+    const arr = await r.json();
+    $('count').textContent = arr.length + ' match' + (arr.length===1?'':'es');
+    if(!arr.length){ $('list').innerHTML = '<div class="empty">No matches yet — upload a .replay. 👆</div>'; return; }
+    $('list').innerHTML = arr.map(m => {
+      const mates = (m.teammates || []).filter(t => t.name);
+      const chips = mates.length
+        ? `<div class="chips">${mates.map(t => `<span class="chip">${esc(t.name)}${typeof t.kills === 'number' ? ` <b>${t.kills}</b>` : ''}</span>`).join('')}</div>`
+        : '';
+      return `
+      <div class="row" data-id="${m.id}">
+        <div class="place ${placeClass(m.placement)}">${m.placement ?? '–'}<small>PLACE</small></div>
+        <div class="meta">
+          <div class="t">${esc(m.playlist || 'Battle Royale')}${!OWNER && m.owner ? `<span class="owner-pill">${esc(m.owner)}</span>` : ''}${m.hasMap ? '<span class="mapbadge">storm</span>' : ''}</div>
+          <div class="s">${fmtDate(m.playedAt)} · ${fmtDur(m.lengthMs)}</div>
+          ${chips}
+        </div>
+        <div class="kills">${m.me?m.me.kills:'–'}<small>KILLS</small></div>
+      </div>`;
+    }).join('');
+    document.querySelectorAll('.row').forEach(el => el.onclick = () => show(el.dataset.id));
+  }catch(e){ $('list').innerHTML = '<div class="empty">Failed to load.</div>'; }
+}
+
+// ---- player attribute tags ----
+const PLAT = { WIN:'PC', WINDOWS:'PC', MAC:'Mac', PSN:'PlayStation', PLAYSTATION:'PlayStation', PS5:'PlayStation', PS4:'PlayStation', XBL:'Xbox', XSX:'Xbox', XB1:'Xbox', XBOX:'Xbox', SWT:'Switch', SWT2:'Switch 2', SWITCH:'Switch', AND:'Android', ANDROID:'Android', IOS:'iOS' };
+function platClass(p){ const u=String(p||'').toUpperCase();
+  if(u==='WIN'||u==='WINDOWS'||u==='MAC') return 'pc';
+  if(['PSN','PLAYSTATION','PS5','PS4','XBL','XSX','XB1','XBOX'].includes(u)) return 'console';
+  if(['SWT','SWT2','SWITCH','AND','ANDROID','IOS'].includes(u)) return 'mobile'; return ''; }
+function tagsFor(p){
+  let t='';
+  if(p.platform) t += `<span class="ptag ${platClass(p.platform)}">${esc(PLAT[String(p.platform).toUpperCase()]||p.platform)}</span>`;
+  if(typeof p.level==='number' && p.level>0) t += `<span class="ltag">Lv ${p.level}</span>`;
+  if(p.isBot) t += `<span class="btag">BOT</span>`;
+  if(p.isReplayOwner) t += `<span class="rtag">REC</span>`;
+  return t;
+}
+
+// ---- storm / safe-zone timeline ----
+function buildStorm(map, lengthMs){
+  const zs = (map && map.safeZones) ? map.safeZones.filter(z => z.nextCenter) : [];
+  if(!zs.length) return null;
+  const segs = [];
+  let cur = { x: zs[0].nextCenter.x, y: zs[0].nextCenter.y, r: zs[0].radius || zs[0].nextRadius || 0 };
+  for(const z of zs){
+    const from = { x: cur.x, y: cur.y, r: cur.r };
+    const to = { x: z.nextCenter ? z.nextCenter.x : from.x, y: z.nextCenter ? z.nextCenter.y : from.y, r: z.nextRadius || from.r };
+    segs.push({ start: z.startShrink || 0, finish: z.finishShrink || 0, from, to });
+    cur = to;
+  }
+  // frame on the zone progression (the opening circle is huge and would otherwise
+  // shrink everything else to nothing) — centre on the spread of centres, size so
+  // the final circle reads well; bigger circles simply overflow (realistic).
+  const centers = segs.flatMap(s => [s.from, s.to]);
+  let minCx=Infinity,maxCx=-Infinity,minCy=Infinity,maxCy=-Infinity;
+  for(const c of centers){ minCx=Math.min(minCx,c.x); maxCx=Math.max(maxCx,c.x); minCy=Math.min(minCy,c.y); maxCy=Math.max(maxCy,c.y); }
+  const cx0=(minCx+maxCx)/2, cy0=(minCy+maxCy)/2;
+  const last = segs[segs.length-1].to;
+  let half = last.r * 1.4;
+  for(const c of centers) half = Math.max(half, Math.hypot(c.x-cx0, c.y-cy0) * 1.15);
+  return { segs, minX:cx0-half, maxX:cx0+half, minY:cy0-half, maxY:cy0+half };
+}
+function stormCircleAt(st, t){
+  let cur = st.segs[0].from;
+  for(const s of st.segs){
+    if(t >= s.finish){ cur = s.to; continue; }
+    if(t >= s.start){ const k=(t-s.start)/Math.max(1,(s.finish-s.start));
+      return { x:s.from.x+(s.to.x-s.from.x)*k, y:s.from.y+(s.to.y-s.from.y)*k, r:s.from.r+(s.to.r-s.from.r)*k }; }
+    return cur;
+  }
+  return cur;
+}
+function stormNext(st, t){ for(const s of st.segs){ if(t < s.finish) return s.to; } return st.segs[st.segs.length-1].to; }
+function drawStorm(cv, st, t, kills, teamSet){
+  const ctx = cv.getContext('2d'), W = cv.width, H = cv.height, pad = 16;
+  ctx.clearRect(0,0,W,H);
+  const w = st.maxX-st.minX, h = st.maxY-st.minY;
+  const scale = Math.min((W-2*pad)/w, (H-2*pad)/h);
+  const ox = pad + (W-2*pad - w*scale)/2, oy = pad + (H-2*pad - h*scale)/2;
+  const X = x => ox + (x-st.minX)*scale, Y = y => oy + (y-st.minY)*scale, R = r => r*scale;
+  // grid
+  ctx.strokeStyle='#141b28'; ctx.lineWidth=1;
+  for(let i=0;i<=10;i++){ const gx=pad+i*(W-2*pad)/10, gy=pad+i*(H-2*pad)/10;
+    ctx.beginPath(); ctx.moveTo(gx,pad); ctx.lineTo(gx,H-pad); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad,gy); ctx.lineTo(W-pad,gy); ctx.stroke(); }
+  const c = stormCircleAt(st, t), nx = stormNext(st, t);
+  // storm = everything outside the safe circle
+  ctx.beginPath(); ctx.rect(0,0,W,H); ctx.arc(X(c.x),Y(c.y),Math.max(0,R(c.r)),0,Math.PI*2);
+  ctx.fillStyle='rgba(120,60,220,0.20)'; ctx.fill('evenodd');
+  // next circle (dashed)
+  ctx.setLineDash([5,5]); ctx.beginPath(); ctx.arc(X(nx.x),Y(nx.y),Math.max(0,R(nx.r)),0,Math.PI*2);
+  ctx.strokeStyle='#fbbf24'; ctx.lineWidth=1.5; ctx.stroke(); ctx.setLineDash([]);
+  // safe circle
+  ctx.beginPath(); ctx.arc(X(c.x),Y(c.y),Math.max(0,R(c.r)),0,Math.PI*2);
+  ctx.strokeStyle='#5eead4'; ctx.lineWidth=2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(X(c.x),Y(c.y),2.5,0,Math.PI*2); ctx.fillStyle='#5eead4'; ctx.fill();
+  // kill markers (eliminations that have happened by time t)
+  if(kills){
+    for(const k of kills){
+      if(k.kind !== 'eliminated' || !k.loc || k.t == null || k.t > t) continue;
+      const x=X(k.loc.x), y=Y(k.loc.y);
+      if(x<0||y<0||x>W||y>H) continue;
+      const oursK = teamSet && teamSet.has(k.killer), oursV = teamSet && teamSet.has(k.victim);
+      ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2);
+      ctx.fillStyle = oursK ? '#5eead4' : oursV ? '#f87171' : 'rgba(180,190,210,0.30)';
+      ctx.fill();
+    }
+  }
+}
+let stormSt=null, stormCv=null, stormT=0, stormLen=0, stormPlaying=false, stormRAF=null, stormKills=null, stormTeam=null;
+function fmtClock(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function stormRender(){
+  if(!stormCv || !stormSt) return;
+  drawStorm(stormCv, stormSt, stormT, stormKills, stormTeam);
+  $('stormt').value = Math.round(1000*stormT/Math.max(1,stormLen));
+  $('stormtime').textContent = fmtClock(stormT);
+}
+function stormTick(){
+  if(!stormPlaying) return;
+  stormT += stormLen/240;                       // ~4s playback for a whole match
+  if(stormT >= stormLen){ stormT = stormLen; stormPlaying=false; $('stormplay').textContent='▶'; }
+  stormRender();
+  if(stormPlaying) stormRAF = requestAnimationFrame(stormTick);
+}
+function startStorm(st, lenSec, kills, teamSet){
+  stopStorm();
+  if(!st){ return; }
+  stormSt=st; stormCv=$('storm'); stormLen=lenSec||1; stormT=0; stormPlaying=true;
+  stormKills=kills||null; stormTeam=teamSet||null;
+  $('stormplay').textContent='⏸';
+  $('stormplay').onclick = () => { stormPlaying=!stormPlaying; $('stormplay').textContent = stormPlaying?'⏸':'▶'; if(stormPlaying) stormTick(); };
+  $('stormt').oninput = e => { stormPlaying=false; $('stormplay').textContent='▶'; stormT=(e.target.value/1000)*stormLen; stormRender(); };
+  stormRender(); stormTick();
+}
+function stopStorm(){ stormPlaying=false; if(stormRAF) cancelAnimationFrame(stormRAF); stormRAF=null; }
+
+async function show(id){
+  const m = await (await fetch('/api/matches/'+id)).json();
+  $('dtitle').textContent = m.playlist || 'Match';
+
+  const team = [];
+  if (m.me) team.push({ ...m.me, me: true });
+  (m.teammates || []).forEach(t => team.push({ ...t, me: false }));
+  team.sort((a, b) => (b.kills ?? -1) - (a.kills ?? -1));
+  const teamKills = team.reduce((s, p) => s + (p.kills || 0), 0);
+  const teamRows = team.length
+    ? team.map(p => `<div class="tm ${p.me ? 'me' : ''}">
+        <span class="nm">${esc(p.name)}${p.me ? '<span class="tag">YOU</span>' : ''}${tagsFor(p)}</span>
+        <span class="kk">${p.kills ?? '–'}<small>KILLS</small></span></div>`).join('')
+    : '<div class="muted" style="padding:6px 2px">no team data in this replay</div>';
+
+  const rows = (m.players || []).slice().sort((a, b) => (b.kills ?? -1) - (a.kills ?? -1)).map(p => `
+    <tr><td class="${m.me && p.name === m.me.name ? 'me' : ''}">${esc(p.name)}${tagsFor(p)}</td>
+        <td>${p.kills ?? '–'}</td><td>${p.team ?? '—'}</td></tr>`).join('');
+
+  const teamSet = new Set(team.map(p => p.name));
+  const rawKf = (m.killFeed || []).filter(k => k.kind === 'eliminated');
+  // replay versions in the wild don't replicate kill timestamps (always 0), so if
+  // they're missing we reveal kills in parse order across the match timeline instead.
+  const hasTimes = rawKf.some(k => k.time && k.time > 0);
+  const matchLen = (m.lengthMs || 0) / 1000;
+  const kf = rawKf.map((k, i) => ({ ...k, t: hasTimes ? k.time : (rawKf.length ? (i / rawKf.length) * matchLen : 0) }));
+
+  // platform breakdown of the lobby (bots / unknown platform get their own bucket)
+  const platCounts = {};
+  for(const p of (m.players || [])){
+    const key = p.platform ? (PLAT[String(p.platform).toUpperCase()] || p.platform) : (p.isBot ? 'Bot' : 'Unknown');
+    platCounts[key] = (platCounts[key] || 0) + 1;
+  }
+  const platHTML = Object.entries(platCounts).sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `<span class="pcount">${esc(k)}<b>${v}</b></span>`).join('');
+
+  const st = buildStorm(m.map, m.lengthMs || 0);
+  const stormHTML = st
+    ? `<div class="sectitle">Storm &amp; map timeline</div>
+       <div class="storm-wrap">
+         <canvas id="storm" width="380" height="380"></canvas>
+         <div class="stormctl">
+           <button class="btn ghost" id="stormplay">⏸</button>
+           <input type="range" id="stormt" min="0" max="1000" value="0">
+           <span class="muted" id="stormtime" style="min-width:44px;text-align:right">0:00</span>
+         </div>
+         <div class="stormlegend"><span><i style="background:#5eead4"></i>safe zone</span><span><i style="background:rgba(120,60,220,.55)"></i>storm</span><span><i style="background:#fbbf24"></i>next circle</span><span><i style="background:#5eead4;border-radius:50%"></i>our kill</span><span><i style="background:#f87171;border-radius:50%"></i>our death</span></div>
+       </div>`
+    : `<div class="sectitle">Storm &amp; map timeline</div>
+       <div class="muted" style="font-size:12px">No zone data in this record — it was parsed before storm support. Re-sync on the gaming PC to add it (future upgrades can use <code>POST /api/reparse</code>).</div>`;
+
+  const kfHTML = kf.length
+    ? `<div class="sectitle">Kill feed · ${kf.length} eliminations</div>
+       <div class="kflist">${kf.map((k, i) => {
+         const ours = teamSet.has(k.killer) || teamSet.has(k.victim);
+         return `<div class="kf ${ours ? 'ours' : ''}">
+           <span class="kft">${hasTimes ? fmtClock(k.t) : '#' + (i + 1)}</span>
+           <span class="kfk">${esc(k.killer)}${k.killerBot ? '<span class="btag">BOT</span>' : ''}</span>
+           <span class="kfa">▸</span>
+           <span class="kfv">${esc(k.victim)}${k.victimBot ? '<span class="btag">BOT</span>' : ''}</span>
+         </div>`;
+       }).join('')}</div>`
+    : '';
+
+  $('dbody').innerHTML = `
+    <div class="stat3">
+      <div><b class="${placeClass(m.placement)}">${m.placement ?? '–'}</b><span>Placement</span></div>
+      <div><b>${m.me ? (m.me.kills ?? '–') : '–'}</b><span>${m.owner ? esc(m.owner) : 'Your'}&nbsp;kills</span></div>
+      <div><b>${teamKills}</b><span>Team kills</span></div>
+    </div>
+    <div class="muted" style="margin-bottom:6px">${fmtDate(m.playedAt)} · ${fmtDur(m.lengthMs)} · ${esc(m.fileName||'')}</div>
+
+    <div class="sectitle">${m.owner ? esc(m.owner) : 'Your'} team · ${teamKills} kills</div>
+    <div class="team">${teamRows}</div>
+
+    ${stormHTML}
+    ${kfHTML}
+
+    <div class="sectitle">Lobby scoreboard · ${(m.players||[]).length} players</div>
+    <div class="platbar">${platHTML}</div>
+    <table><thead><tr><th>Player</th><th>Kills</th><th>Team</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="3" class="muted">no player data</td></tr>'}</tbody></table>`;
+  $('detail').showModal();
+  startStorm(st, (m.lengthMs || 0) / 1000, kf, teamSet);
+}
+$('dclose').onclick = () => { stopStorm(); $('detail').close(); };
+
+async function upload(file){
+  toast('Parsing '+file.name+'…');
+  const buf = await file.arrayBuffer();
+  const r = await fetch('/api/ingest', {method:'POST',
+    headers:{'Content-Type':'application/octet-stream','X-Replay-Name':file.name}, body:buf});
+  const j = await r.json();
+  if(r.ok){ toast('Added '+(j.record.playlist||'match')+(j.record.owner?' · '+j.record.owner:'')); loadOwners(); refresh(); }
+  else { toast('Parse failed: '+(j.error||r.status)); console.error(j); }
+}
+
+const drop = $('drop');
+drop.onclick = () => $('file').click();
+$('file').onchange = e => [...e.target.files].forEach(upload);
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.add('hot');}));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.remove('hot');}));
+
+// Recursively collect .replay files from a dropped folder. Dragging bypasses the
+// directory-picker block on system folders (e.g. AppData) entirely.
+async function collectEntry(entry, out){
+  if(entry.isFile){ if(entry.name.toLowerCase().endsWith('.replay')) out.push(entry); return; }
+  if(entry.isDirectory){
+    const reader = entry.createReader();
+    let batch;
+    do {
+      batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+      for(const child of batch) await collectEntry(child, out);
+    } while(batch.length);
+  }
+}
+drop.addEventListener('drop', async e => {
+  e.preventDefault(); drop.classList.remove('hot');
+  const entries = [...(e.dataTransfer.items || [])]
+    .map(it => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+  if(!entries.length){
+    [...e.dataTransfer.files].forEach(f => f.name.toLowerCase().endsWith('.replay') && upload(f));
+    return;
+  }
+  setSub('Reading dropped folder…');
+  const found = [];
+  for(const en of entries) await collectEntry(en, found);
+  if(!found.length){ setSub('No .replay files found in what you dropped.'); toast('No .replay files found'); return; }
+  const items = await Promise.all(found.map(async en => ({ name: en.name, file: await new Promise((res, rej) => en.file(res, rej)) })));
+  const news = items.filter(x => SENT[x.name] !== fkey(x.file));
+  if(!news.length){ setSub('✓ Already up to date — no new replays.'); toast('Already up to date'); return; }
+  await pushBatch(news);
+});
+
+// ---- player filter ----
+$('player').onchange = () => { OWNER = $('player').value; refresh(); };
+
+// ---- tabs ----
+function setView(v){
+  VIEW = v;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  $('view-matches').hidden = v !== 'matches';
+  $('view-teammates').hidden = v !== 'teammates';
+  $('view-tiers').hidden = v !== 'tiers';
+  $('count').style.visibility = v === 'matches' ? 'visible' : 'hidden';
+  if (v === 'teammates') loadMates();
+  if (v === 'tiers') loadTier();
+}
+function refresh(){ if (VIEW === 'teammates') loadMates(); else if (VIEW === 'tiers') loadTier(); else load(); }
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => setView(b.dataset.view));
+
+async function loadMates(){
+  try{
+    const arr = await (await fetch('/api/teammates' + q())).json();
+    if (!arr.length){ $('mates').innerHTML = '<div class="empty">No teammate data yet.</div>'; return; }
+    $('mates').innerHTML =
+      `<table><thead><tr><th>Teammate</th><th>Matches</th><th>Avg kills</th><th>Best</th><th>Wins</th><th>Best place</th></tr></thead><tbody>` +
+      arr.map(t => `<tr>
+        <td class="me">${esc(t.name)}</td>
+        <td>${t.matches}</td>
+        <td>${t.avgKills ?? '–'}</td>
+        <td>${t.bestKills || '–'}</td>
+        <td>${t.wins} <span class="muted">(${t.winRate}%)</span></td>
+        <td>${t.bestPlace ?? '–'}</td></tr>`).join('') +
+      `</tbody></table>`;
+  }catch(e){ $('mates').innerHTML = '<div class="empty">Failed to load.</div>'; }
+}
+
+const TIER_ORDER = ['S','A','B','C','D'];
+async function loadTier(){
+  try{
+    const data = await (await fetch('/api/tierlist' + q())).json();
+    const ps = data.players || [];
+    if(!ps.length){ $('tiers').innerHTML = '<div class="empty">Not enough matches yet.</div>'; return; }
+    const byTier = {};
+    ps.forEach(p => (byTier[p.tier] = byTier[p.tier] || []).push(p));
+    $('tiers').innerHTML = TIER_ORDER.map(t => {
+      const list = byTier[t] || [];
+      const cards = list.length
+        ? list.map(p => `<div class="tcard ${p.isOwner?'self':''}">
+            <div class="nm">${esc(p.name)}${p.isOwner?'<span class="tag">YOU</span>':''}</div>
+            <div class="st"><b>${p.ptsPerMatch}</b> pts/match · ${p.avgKills ?? '–'} avg K</div>
+            <div class="st">${p.matches} games · ${p.wins}W · best ${p.best ?? '–'}</div>
+          </div>`).join('')
+        : '<span class="tempty">— no one here —</span>';
+      return `<div class="tier t${t}"><div class="tlabel">${t}</div><div class="tcards">${cards}</div></div>`;
+    }).join('');
+  }catch(e){ $('tiers').innerHTML = '<div class="empty">Failed to load.</div>'; }
+}
+
+// ---- quick sync: pull new replays from the local Fortnite folder ----
+// Chrome/Edge: File System Access API remembers the chosen folder (IndexedDB),
+// so repeat visits are a single click. Other browsers fall back to a folder input.
+const HAS_FS = typeof window.showDirectoryPicker === 'function';
+let dirHandle = null;
+
+const SENT = (() => { try { return JSON.parse(localStorage.getItem('fn_sent') || '{}'); } catch { return {}; } })();
+const saveSent = () => { try { localStorage.setItem('fn_sent', JSON.stringify(SENT)); } catch {} };
+const fkey = f => f.size + ':' + f.lastModified;
+const setSub = t => { $('sync-sub').textContent = t; };
+
+function idb() { return new Promise((res, rej) => { const r = indexedDB.open('fnvault', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbGet(k) { try { const db = await idb(); return await new Promise(res => {
+  const q = db.transaction('kv','readonly').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); } catch { return null; } }
+async function idbSet(k, v) { try { const db = await idb(); return await new Promise(res => {
+  const tx = db.transaction('kv','readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(true); tx.onerror = () => res(false); }); } catch { return false; } }
+
+async function postRaw(file, name) {
+  const buf = await file.arrayBuffer();
+  const r = await fetch('/api/ingest', { method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream', 'X-Replay-Name': name }, body: buf });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('http ' + r.status));
+  return j;
+}
+
+async function pushBatch(items) {          // items: [{name, file}]
+  let done = 0, ok = 0, fail = 0;
+  const q = items.slice();
+  setSub('Uploading 0/' + items.length + '…');
+  async function worker() {
+    while (q.length) {
+      const it = q.shift();
+      try { await postRaw(it.file, it.name); SENT[it.name] = fkey(it.file); ok++; }
+      catch (e) { fail++; console.error(it.name, e); }
+      done++; setSub('Uploading ' + done + '/' + items.length + '…');
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  saveSent(); loadOwners(); refresh();
+  const msg = '✓ Uploaded ' + ok + (fail ? ', ' + fail + ' failed' : '') + ' new replay' + (ok === 1 ? '' : 's') + '.';
+  setSub(msg); toast('Synced: ' + ok + ' added' + (fail ? ', ' + fail + ' failed' : ''));
+}
+
+async function pickFolder() {
+  if (!HAS_FS) { $('dir-input').click(); return; }
+  try {
+    dirHandle = await window.showDirectoryPicker({ id: 'fortniteDemos', mode: 'read' });
+    await idbSet('demos', dirHandle);
+    setSub('Folder: “' + dirHandle.name + '”. Syncing…');
+    await syncNow();
+  } catch (e) { if (e && e.name !== 'AbortError') toast('Folder error: ' + e.message); }
+}
+
+async function ensurePerm(h) {
+  if (await h.queryPermission({ mode: 'read' }) === 'granted') return true;
+  return (await h.requestPermission({ mode: 'read' })) === 'granted';
+}
+
+async function syncNow() {
+  if (!dirHandle) { await pickFolder(); return; }
+  const btn = $('sync-btn');
+  if (!(await ensurePerm(dirHandle))) { toast('Permission denied for that folder.'); return; }
+  btn.disabled = true; btn.textContent = 'Scanning…'; setSub('Scanning folder for .replay files…');
+  let news = [];
+  try {
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind !== 'file' || !entry.name.toLowerCase().endsWith('.replay')) continue;
+      const f = await entry.getFile();
+      if (SENT[entry.name] === fkey(f)) continue;
+      news.push({ name: entry.name, file: f });
+    }
+  } catch (e) { toast('Scan error: ' + e.message); }
+  if (!news.length) { btn.disabled = false; btn.textContent = 'Pull new replays'; setSub('✓ Already up to date — no new replays.'); toast('Already up to date'); return; }
+  await pushBatch(news);
+  btn.disabled = false; btn.textContent = 'Pull new replays';
+}
+
+$('sync-btn').onclick = () => syncNow();
+$('sync-pick').onclick = () => pickFolder();
+$('dir-input').onchange = async e => {
+  const files = [...e.target.files].filter(f => f.name.toLowerCase().endsWith('.replay'));
+  const news = files.filter(f => SENT[f.name] !== fkey(f)).map(f => ({ name: f.name, file: f }));
+  if (!news.length) { toast('Already up to date'); return; }
+  await pushBatch(news);
+};
+
+(async () => {
+  const DEMOS = '%LOCALAPPDATA%\\FortniteGame\\Saved\\Demos';
+  if (!HAS_FS) {
+    setSub('Click “Folder…” and pick your Fortnite Demos folder (usually ' + DEMOS + '). One-click sync needs Chrome or Edge.');
+    return;
+  }
+  const h = await idbGet('demos');
+  if (h) { dirHandle = h; setSub('Folder: “' + h.name + '”. One click to pull new replays.'); }
+  else { $('sync-btn').textContent = 'Set folder'; setSub('First time: pick your Fortnite Demos folder (usually ' + DEMOS + ') — it\'s remembered.'); }
+})();
+
+loadOwners().then(load);
+</script>
+</body>
+</html>

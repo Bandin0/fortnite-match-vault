@@ -1,0 +1,11 @@
+data/
+client/
+docs/
+.git/
+.gitignore
+.env
+*.md
+*.zip
+node_modules/
+replay2json/bin/
+replay2json/obj/
